@@ -16,6 +16,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Mount, Route
 
+from db import log_sanitize_call
 from repair_logic import (
     repair_json,
     repair_string,
@@ -66,7 +67,14 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "raw_string": {"type": "string", "description": "Raw string that should contain JSON, possibly with prose or control character issues."}
+                "raw_string": {
+                    "type": "string",
+                    "description": "Raw string that should contain JSON, possibly with prose or control character issues.",
+                },
+                "api_key_id": {
+                    "type": "string",
+                    "description": "Your API key identifier, used to attribute crash-prevention metrics to your account.",
+                },
             },
             "required": ["raw_string"],
         },
@@ -135,8 +143,14 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 
     if name == "sanitize_json_output":
         raw = arguments.get("raw_string", "")
+        api_key_id = arguments.get("api_key_id")
         try:
             sanitized, fixes = sanitize_json_output(raw)
+            log_sanitize_call(
+                input_length=len(raw),
+                repair_performed=bool(fixes),
+                api_key_id=api_key_id,
+            )
             return [
                 TextContent(
                     type="text",
@@ -144,6 +158,11 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 )
             ]
         except ValueError as exc:
+            log_sanitize_call(
+                input_length=len(raw),
+                repair_performed=False,
+                api_key_id=api_key_id,
+            )
             return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
 
     if name == "repair_string":
