@@ -16,7 +16,12 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Mount, Route
 
-from repair_logic import repair_json, sanitize_json_output, validate_json
+from repair_logic import (
+    repair_json,
+    repair_string,
+    sanitize_json_output,
+    validate_json,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -66,6 +71,37 @@ TOOLS: list[Tool] = [
             "required": ["raw_string"],
         },
     ),
+    Tool(
+        name="repair_string",
+        description=(
+            "Deterministic repair engine. Given a raw LLM output that should contain "
+            "JSON, this tool: (1) regex-strips prose preambles/suffixes by finding the "
+            "first `{`/`[` and last `}`/`]`, (2) escapes unescaped control characters "
+            "(newlines, tabs, carriage returns) inside string values, (3) validates "
+            "with json.loads — falling back to structural repairs and partial-recovery "
+            "bracket closing when needed, and (4) optionally validates the repaired "
+            "JSON against a JSON schema, returning concrete 'Fix Actions' the agent "
+            "must take when schema validation fails."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "raw_string": {
+                    "type": "string",
+                    "description": "Raw text that should contain JSON.",
+                },
+                "schema": {
+                    "type": "object",
+                    "description": (
+                        "Optional JSON schema. When provided, the repaired JSON is "
+                        "validated against it. Validation errors are translated into "
+                        "a list of actionable 'Fix Action' strings."
+                    ),
+                },
+            },
+            "required": ["raw_string"],
+        },
+    ),
 ]
 
 
@@ -76,9 +112,8 @@ async def list_tools() -> list[Tool]:
 
 @mcp.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    raw = arguments.get("json_string", "")
-
     if name == "validate_json":
+        raw = arguments.get("json_string", "")
         try:
             parsed = validate_json(raw)
             return [TextContent(type="text", text=json.dumps({"valid": True, "parsed": parsed}))]
@@ -86,6 +121,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             return [TextContent(type="text", text=json.dumps({"valid": False, "error": str(exc)}))]
 
     if name == "repair_json":
+        raw = arguments.get("json_string", "")
         try:
             repaired, fixes = repair_json(raw)
             return [
@@ -109,6 +145,12 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
             ]
         except ValueError as exc:
             return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+
+    if name == "repair_string":
+        raw_string = arguments.get("raw_string", "")
+        schema = arguments.get("schema")  # optional
+        result = repair_string(raw_string, schema=schema)
+        return [TextContent(type="text", text=json.dumps(result))]
 
     return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
