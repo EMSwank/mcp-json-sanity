@@ -73,6 +73,53 @@ def validate_json(raw: str) -> dict:
         raise ValueError(f"Invalid JSON at line {exc.lineno}, col {exc.colno}: {exc.msg}") from exc
 
 
+def sanitize_json_output(raw_string: str) -> tuple[str, list[str]]:
+    """
+    Strip prose preambles and repair malformed control characters, then
+    return valid JSON. Raises ValueError if the result cannot be parsed.
+
+    Returns (sanitized_json_str, list_of_applied_fixes).
+    """
+    fixes: list[str] = []
+    text = raw_string
+
+    # 1. Replace literal \n \t \r escape sequences that appear outside strings
+    #    (e.g. a model emitting \\n instead of a real newline inside a value)
+    ctrl_cleaned = re.sub(r'\\([nrt])', lambda m: {"n": "\n", "r": "\r", "t": "\t"}[m.group(1)], text)
+    if ctrl_cleaned != text:
+        fixes.append("decoded escaped control characters (\\n/\\r/\\t)")
+        text = ctrl_cleaned
+
+    # 2. Remove actual unescaped control characters (0x00–0x1F except \n \r \t)
+    #    that are illegal inside JSON strings
+    no_ctrl = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', text)
+    if no_ctrl != text:
+        fixes.append("removed illegal control characters")
+        text = no_ctrl
+
+    # 3. Strip prose preamble — everything before the first { or [
+    match = re.search(r'[{\[]', text)
+    if match and match.start() > 0:
+        fixes.append(f"stripped {match.start()}-char prose preamble")
+        text = text[match.start():]
+
+    # 4. Strip prose suffix — everything after the last } or ]
+    last = max(text.rfind("}"), text.rfind("]"))
+    if last != -1 and last < len(text) - 1:
+        fixes.append(f"stripped {len(text) - last - 1}-char prose suffix")
+        text = text[: last + 1]
+
+    # 5. Delegate remaining structural issues to repair_json
+    if _try_parse(text) is None:
+        text, repair_fixes = repair_json(text)
+        fixes.extend(repair_fixes)
+
+    if _try_parse(text) is None:
+        raise ValueError("Could not sanitize input into valid JSON")
+
+    return text, fixes
+
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def _try_parse(text: str) -> object | None:

@@ -16,7 +16,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Mount, Route
 
-from repair_logic import repair_json, validate_json
+from repair_logic import repair_json, sanitize_json_output, validate_json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,6 +51,21 @@ TOOLS: list[Tool] = [
             "required": ["json_string"],
         },
     ),
+    Tool(
+        name="sanitize_json_output",
+        description=(
+            "Use this tool before saving any JSON data to session history or state files "
+            "to prevent JSONDecodeErrors and session poisoning. It removes prose preambles "
+            "and repairs malformed control characters."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "raw_string": {"type": "string", "description": "Raw string that should contain JSON, possibly with prose or control character issues."}
+            },
+            "required": ["raw_string"],
+        },
+    ),
 ]
 
 
@@ -77,6 +92,19 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 TextContent(
                     type="text",
                     text=json.dumps({"repaired": repaired, "fixes_applied": fixes}),
+                )
+            ]
+        except ValueError as exc:
+            return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+
+    if name == "sanitize_json_output":
+        raw = arguments.get("raw_string", "")
+        try:
+            sanitized, fixes = sanitize_json_output(raw)
+            return [
+                TextContent(
+                    type="text",
+                    text=json.dumps({"sanitized": sanitized, "fixes_applied": fixes}),
                 )
             ]
         except ValueError as exc:
