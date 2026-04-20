@@ -16,6 +16,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Mount, Route
 
+from billing import record_tool_invocation
 from db import log_sanitize_call
 from repair_logic import (
     repair_json,
@@ -31,6 +32,13 @@ logger = logging.getLogger(__name__)
 
 mcp = Server("json-sanity")
 
+_API_KEY_PROP = {
+    "api_key_id": {
+        "type": "string",
+        "description": "Your Stripe Customer ID, used for metered billing ($0.01 per invocation).",
+    }
+}
+
 TOOLS: list[Tool] = [
     Tool(
         name="validate_json",
@@ -38,7 +46,8 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "json_string": {"type": "string", "description": "The JSON text to validate."}
+                "json_string": {"type": "string", "description": "The JSON text to validate."},
+                **_API_KEY_PROP,
             },
             "required": ["json_string"],
         },
@@ -52,7 +61,8 @@ TOOLS: list[Tool] = [
         inputSchema={
             "type": "object",
             "properties": {
-                "json_string": {"type": "string", "description": "The malformed JSON text to repair."}
+                "json_string": {"type": "string", "description": "The malformed JSON text to repair."},
+                **_API_KEY_PROP,
             },
             "required": ["json_string"],
         },
@@ -106,6 +116,7 @@ TOOLS: list[Tool] = [
                         "a list of actionable 'Fix Action' strings."
                     ),
                 },
+                **_API_KEY_PROP,
             },
             "required": ["raw_string"],
         },
@@ -120,30 +131,30 @@ async def list_tools() -> list[Tool]:
 
 @mcp.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    api_key_id: str | None = arguments.get("api_key_id")
+    response: list[TextContent]
+    success = True
+
     if name == "validate_json":
         raw = arguments.get("json_string", "")
         try:
             parsed = validate_json(raw)
-            return [TextContent(type="text", text=json.dumps({"valid": True, "parsed": parsed}))]
+            response = [TextContent(type="text", text=json.dumps({"valid": True, "parsed": parsed}))]
         except ValueError as exc:
-            return [TextContent(type="text", text=json.dumps({"valid": False, "error": str(exc)}))]
+            success = False
+            response = [TextContent(type="text", text=json.dumps({"valid": False, "error": str(exc)}))]
 
-    if name == "repair_json":
+    elif name == "repair_json":
         raw = arguments.get("json_string", "")
         try:
             repaired, fixes = repair_json(raw)
-            return [
-                TextContent(
-                    type="text",
-                    text=json.dumps({"repaired": repaired, "fixes_applied": fixes}),
-                )
-            ]
+            response = [TextContent(type="text", text=json.dumps({"repaired": repaired, "fixes_applied": fixes}))]
         except ValueError as exc:
-            return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+            success = False
+            response = [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
 
-    if name == "sanitize_json_output":
+    elif name == "sanitize_json_output":
         raw = arguments.get("raw_string", "")
-        api_key_id = arguments.get("api_key_id")
         try:
             sanitized, fixes = sanitize_json_output(raw)
             log_sanitize_call(
@@ -151,27 +162,27 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 repair_performed=bool(fixes),
                 api_key_id=api_key_id,
             )
-            return [
-                TextContent(
-                    type="text",
-                    text=json.dumps({"sanitized": sanitized, "fixes_applied": fixes}),
-                )
-            ]
+            response = [TextContent(type="text", text=json.dumps({"sanitized": sanitized, "fixes_applied": fixes}))]
         except ValueError as exc:
-            log_sanitize_call(
-                input_length=len(raw),
-                repair_performed=False,
-                api_key_id=api_key_id,
-            )
-            return [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
+            success = False
+            log_sanitize_call(input_length=len(raw), repair_performed=False, api_key_id=api_key_id)
+            response = [TextContent(type="text", text=json.dumps({"error": str(exc)}))]
 
-    if name == "repair_string":
+    elif name == "repair_string":
         raw_string = arguments.get("raw_string", "")
-        schema = arguments.get("schema")  # optional
+        schema = arguments.get("schema")
         result = repair_string(raw_string, schema=schema)
-        return [TextContent(type="text", text=json.dumps(result))]
+        success = result.get("ok", False)
+        response = [TextContent(type="text", text=json.dumps(result))]
 
-    return [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
+    else:
+        success = False
+        response = [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
+
+    if success:
+        record_tool_invocation(api_key_id=api_key_id, tool_name=name)
+
+    return response
 
 
 # ── SSE transport / Starlette app ─────────────────────────────────────────────
