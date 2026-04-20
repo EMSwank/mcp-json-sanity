@@ -280,33 +280,54 @@ def _escape_control_chars_in_strings(text: str) -> tuple[str, int]:
 
 def _close_open_brackets(text: str) -> tuple[str, list[str]]:
     fixes: list[str] = []
-    stack: list[str] = []
+    stack: list[str] = []  # expected closers
     in_string = False
     escape_next = False
+    result: list[str] = []
 
     for ch in text:
         if escape_next:
             escape_next = False
+            result.append(ch)
             continue
         if ch == "\\" and in_string:
             escape_next = True
+            result.append(ch)
             continue
         if ch == '"':
             in_string = not in_string
+            result.append(ch)
             continue
         if in_string:
+            result.append(ch)
             continue
         if ch in "{[":
             stack.append("}" if ch == "{" else "]")
-        elif ch in "}]" and stack:
-            stack.pop()
+            result.append(ch)
+        elif ch in "}]":
+            if stack and stack[-1] != ch:
+                # Mismatched closer — insert the expected one, then keep ch
+                expected = stack.pop()
+                fixes.append(f"replaced mismatched '{ch}' with '{expected}{ch}'")
+                result.append(expected)
+                result.append(ch)
+                # ch may now match the new stack top
+                if stack and stack[-1] == ch:
+                    stack.pop()
+            elif stack:
+                stack.pop()
+                result.append(ch)
+            else:
+                result.append(ch)
+        else:
+            result.append(ch)
 
     if stack:
         closing = "".join(reversed(stack))
         fixes.append(f"appended closing brackets: {closing!r}")
-        text = text + closing
+        result.append(closing)
 
-    return text, fixes
+    return "".join(result), fixes
 
 
 def _validate_against_schema(instance: object, schema: dict) -> list[str]:
