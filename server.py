@@ -16,7 +16,7 @@ from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.routing import Mount, Route
 
-from billing import record_tool_invocation
+from billing import billing_service
 from db import log_sanitize_call
 from repair_logic import (
     repair_json,
@@ -180,7 +180,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
         response = [TextContent(type="text", text=json.dumps({"error": f"Unknown tool: {name}"}))]
 
     if success:
-        record_tool_invocation(api_key_id=api_key_id, tool_name=name)
+        billing_service.record_invocation(api_key_id=api_key_id, tool_name=name)
 
     return response
 

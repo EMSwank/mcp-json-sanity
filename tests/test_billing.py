@@ -1,137 +1,177 @@
 """
-Tests for Stripe metered billing.
+Tests for BillingService.
 
-Covers:
-  - Correct MeterEvent payload shape (field names, types, value encoding)
-  - Correct meter event name sourced from STRIPE_METER_EVENT_NAME
-  - Anonymous callers (no api_key_id) are never billed
-  - Stripe failures never propagate to the caller
-  - Warning is emitted on failure
-  - STRIPE_SECRET_KEY absence disables billing silently
+Sections:
+  1. Payload shape — _build_event produces exactly what Stripe expects
+  2. MOCK mode     — prints to stdout, never calls Stripe
+  3. LIVE mode     — calls stripe.billing.MeterEvent.create with correct args
+  4. Graceful degradation — failures never propagate; warnings are emitted
+  5. Zero-code-change guarantee — same payload in both modes
 """
 
 from __future__ import annotations
 
-import logging
-import os
-from unittest.mock import MagicMock, call, patch
+import json
+import time
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-import billing
+from billing import BillingService
 
 
-# ── helpers ───────────────────────────────────────────────────────────────────
+# ── fixtures ──────────────────────────────────────────────────────────────────
 
-def _invoke(api_key_id: str | None = "cus_test123", tool_name: str = "sanitize_json_output"):
-    billing.record_tool_invocation(api_key_id=api_key_id, tool_name=tool_name)
+@pytest.fixture
+def mock_service() -> BillingService:
+    """BillingService in MOCK mode (no Stripe key)."""
+    return BillingService(api_key=None, meter_event_name="test_event")
 
 
-# ── payload shape ─────────────────────────────────────────────────────────────
+@pytest.fixture
+def live_service() -> BillingService:
+    """BillingService in LIVE mode with a fake key."""
+    return BillingService(api_key="sk_test_fake", meter_event_name="test_event")
 
-def test_meter_event_payload_shape():
-    """MeterEvent.create must be called with the exact fields Stripe expects."""
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        _invoke(api_key_id="cus_abc123")
+
+# ── 1. Payload shape ──────────────────────────────────────────────────────────
+
+def test_build_event_has_required_stripe_fields(mock_service):
+    """_build_event must include all fields required by the Stripe MeterEvent API."""
+    event = mock_service._build_event(api_key_id="cus_abc123")
+
+    assert "event_name" in event
+    assert "payload" in event
+    assert "timestamp" in event
+
+
+def test_build_event_stripe_customer_id(mock_service):
+    event = mock_service._build_event(api_key_id="cus_abc123")
+    assert event["payload"]["stripe_customer_id"] == "cus_abc123"
+
+
+def test_build_event_value_is_string_not_int(mock_service):
+    """Stripe's API requires value as a string — '1', never 1."""
+    event = mock_service._build_event(api_key_id="cus_abc123")
+    assert isinstance(event["payload"]["value"], str), (
+        "Stripe MeterEvent payload.value must be a string"
+    )
+    assert event["payload"]["value"] == "1"
+
+
+def test_build_event_uses_configured_meter_name(mock_service):
+    event = mock_service._build_event(api_key_id="cus_abc123")
+    assert event["event_name"] == "test_event"
+
+
+def test_build_event_timestamp_is_recent_unix_epoch(mock_service):
+    before = int(time.time())
+    event = mock_service._build_event(api_key_id="cus_abc123")
+    after = int(time.time()) + 1
+    assert isinstance(event["timestamp"], int)
+    assert before <= event["timestamp"] <= after
+
+
+# ── 2. MOCK mode ──────────────────────────────────────────────────────────────
+
+def test_mock_mode_is_active_when_no_key():
+    svc = BillingService(api_key=None)
+    assert svc.mock_mode is True
+
+
+def test_mock_mode_prints_to_stdout(mock_service, capsys):
+    mock_service.record_invocation(api_key_id="cus_abc", tool_name="validate_json")
+    out = capsys.readouterr().out
+    assert "[BillingService MOCK]" in out
+    assert "validate_json" in out
+
+
+def test_mock_mode_output_contains_valid_json(mock_service, capsys):
+    """The printed event payload must itself be valid JSON."""
+    mock_service.record_invocation(api_key_id="cus_abc", tool_name="repair_json")
+    out = capsys.readouterr().out
+    # Extract the JSON blob after 'event='
+    json_part = out.split("event=", 1)[1].strip()
+    parsed = json.loads(json_part)  # raises if invalid
+    assert parsed["payload"]["stripe_customer_id"] == "cus_abc"
+
+
+def test_mock_mode_does_not_call_stripe(mock_service):
+    with patch("stripe.billing.MeterEvent.create") as mock_create:
+        mock_service.record_invocation(api_key_id="cus_abc", tool_name="repair_json")
+    mock_create.assert_not_called()
+
+
+# ── 3. LIVE mode ──────────────────────────────────────────────────────────────
+
+def test_live_mode_is_active_when_key_present():
+    svc = BillingService(api_key="sk_test_fake")
+    assert svc.mock_mode is False
+
+
+def test_live_mode_calls_stripe_meter_event(live_service):
+    with patch("stripe.billing.MeterEvent.create") as mock_create:
+        live_service.record_invocation(api_key_id="cus_xyz", tool_name="sanitize_json_output")
 
     mock_create.assert_called_once()
     kwargs = mock_create.call_args.kwargs
-
-    assert kwargs["event_name"] == billing.METER_EVENT_NAME
-    assert kwargs["payload"]["stripe_customer_id"] == "cus_abc123"
-    assert kwargs["payload"]["value"] == "1"           # Stripe requires string, not int
+    assert kwargs["event_name"] == "test_event"
+    assert kwargs["payload"]["stripe_customer_id"] == "cus_xyz"
+    assert kwargs["payload"]["value"] == "1"
     assert isinstance(kwargs["timestamp"], int)
 
 
-def test_meter_event_value_is_string_not_int():
-    """Stripe's Meter Events API requires value as a string — never an int."""
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        _invoke()
-
-    payload = mock_create.call_args.kwargs["payload"]
-    assert isinstance(payload["value"], str), "value must be a string per Stripe's API contract"
-    assert payload["value"] == "1"
+def test_live_mode_does_not_print(live_service, capsys):
+    with patch("stripe.billing.MeterEvent.create"):
+        live_service.record_invocation(api_key_id="cus_xyz", tool_name="repair_json")
+    assert capsys.readouterr().out == ""
 
 
-def test_meter_event_name_from_env():
-    """STRIPE_METER_EVENT_NAME env var must be forwarded as event_name."""
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, {
-             "STRIPE_SECRET_KEY": "sk_test_fake",
-             "STRIPE_METER_EVENT_NAME": "custom_event_name",
-         }):
-        # Re-read the env var inside the function (not module-level cache)
-        with patch.object(billing, "METER_EVENT_NAME", "custom_event_name"):
-            _invoke()
+# ── 4. Graceful degradation ───────────────────────────────────────────────────
 
-    assert mock_create.call_args.kwargs["event_name"] == "custom_event_name"
-
-
-def test_timestamp_is_current_unix_epoch():
-    """Timestamp must be a recent Unix epoch integer (within 5 seconds)."""
-    import time
-    before = int(time.time())
-
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        _invoke()
-
-    after = int(time.time())
-    ts = mock_create.call_args.kwargs["timestamp"]
-    assert before <= ts <= after + 1
-
-
-# ── billing skipped for anonymous callers ─────────────────────────────────────
-
-def test_no_billing_when_api_key_id_is_none():
-    """Anonymous calls (no api_key_id) must never reach Stripe."""
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        billing.record_tool_invocation(api_key_id=None, tool_name="validate_json")
-
+def test_no_billing_when_api_key_id_is_none(live_service):
+    with patch("stripe.billing.MeterEvent.create") as mock_create:
+        live_service.record_invocation(api_key_id=None, tool_name="validate_json")
     mock_create.assert_not_called()
 
 
-def test_no_billing_when_api_key_id_is_empty_string():
-    """Empty string api_key_id is treated the same as None — no billing."""
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        billing.record_tool_invocation(api_key_id="", tool_name="validate_json")
-
+def test_no_billing_when_api_key_id_is_empty_string(live_service):
+    with patch("stripe.billing.MeterEvent.create") as mock_create:
+        live_service.record_invocation(api_key_id="", tool_name="validate_json")
     mock_create.assert_not_called()
 
 
-# ── missing Stripe key ────────────────────────────────────────────────────────
+def test_stripe_error_does_not_propagate(live_service):
+    with patch("stripe.billing.MeterEvent.create", side_effect=Exception("Stripe down")):
+        live_service.record_invocation(api_key_id="cus_xyz", tool_name="repair_json")
 
-def test_no_billing_when_stripe_key_missing(caplog):
-    """If STRIPE_SECRET_KEY is absent, billing is disabled with a warning."""
-    env = {k: v for k, v in os.environ.items() if k != "STRIPE_SECRET_KEY"}
-    with patch("stripe.billing.MeterEvent.create") as mock_create, \
-         patch.dict(os.environ, env, clear=True):
+
+def test_stripe_failure_emits_warning(live_service, caplog):
+    import logging
+    with patch("stripe.billing.MeterEvent.create", side_effect=RuntimeError("timeout")):
         with caplog.at_level(logging.WARNING, logger="billing"):
-            _invoke()
-
-    mock_create.assert_not_called()
-    assert any("STRIPE_SECRET_KEY" in m for m in caplog.messages)
-
-
-# ── graceful degradation ──────────────────────────────────────────────────────
-
-def test_stripe_error_does_not_propagate():
-    """A Stripe API error must never raise — tool responses must be unaffected."""
-    with patch("stripe.billing.MeterEvent.create", side_effect=Exception("Stripe down")), \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        # Must not raise
-        _invoke()
-
-
-def test_stripe_failure_emits_warning(caplog):
-    """A Stripe failure must be logged as WARNING, not silently swallowed."""
-    with patch("stripe.billing.MeterEvent.create", side_effect=RuntimeError("timeout")), \
-         patch.dict(os.environ, {"STRIPE_SECRET_KEY": "sk_test_fake"}):
-        with caplog.at_level(logging.WARNING, logger="billing"):
-            _invoke()
-
+            live_service.record_invocation(api_key_id="cus_xyz", tool_name="repair_json")
     assert any("Stripe billing failed" in m for m in caplog.messages)
+
+
+# ── 5. Zero-code-change guarantee ─────────────────────────────────────────────
+
+def test_mock_and_live_produce_identical_payload_shape():
+    """
+    _build_event output must be byte-for-byte identical regardless of mode.
+    This guarantees that switching from mock → live is purely a config change.
+    """
+    mock_svc = BillingService(api_key=None, meter_event_name="my_meter")
+    live_svc = BillingService(api_key="sk_test_fake", meter_event_name="my_meter")
+
+    # Freeze time so timestamps match
+    frozen_ts = 1_700_000_000
+    with patch("billing.time") as mock_time:
+        mock_time.time.return_value = frozen_ts
+        event_mock = mock_svc._build_event(api_key_id="cus_same")
+        event_live = live_svc._build_event(api_key_id="cus_same")
+
+    assert event_mock == event_live, (
+        "Mock and live services must produce identical payloads — "
+        "switching modes should require zero code changes"
+    )
