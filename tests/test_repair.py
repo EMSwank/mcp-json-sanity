@@ -106,4 +106,4 @@ def test_sanitize_markdown_fence_stripped():
     raw = "```json\n{\"key\": \"value\"}\n```"
     sanitized, fixes = sanitize_json_output(raw)
     assert json.loads(sanitized) == {"key": "value"}
-    assert any("preamble" in f for f in fixes)
+    assert any("markdown" in f or "fence" in f for f in fixes)

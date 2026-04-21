@@ -11,6 +11,20 @@ import re
 # environments that don't need schema enforcement don't pay the import cost.
 
 
+def clean_llm_markdown(text: str) -> tuple[str, bool]:
+    """
+    Strip markdown code fences that LLMs wrap around JSON output.
+
+    Handles: ```json\\n...\\n```, ```\\n...\\n```, and the no-newline
+    variant.  Returns (cleaned_text, was_changed).
+    """
+    stripped = text.strip()
+    cleaned = re.sub(r'^```(?:json|JSON)?\s*\n?', '', stripped)
+    cleaned = re.sub(r'\n?```\s*$', '', cleaned)
+    changed = cleaned != stripped
+    return cleaned, changed
+
+
 def repair_json(raw: str) -> tuple[str, list[str]]:
     """
     Attempt to repair malformed JSON.
@@ -83,7 +97,11 @@ def sanitize_json_output(raw_string: str) -> tuple[str, list[str]]:
     Returns (sanitized_json_str, list_of_applied_fixes).
     """
     fixes: list[str] = []
-    text = raw_string
+
+    # 0. Strip markdown code fences (```json ... ```)
+    text, fenced = clean_llm_markdown(raw_string)
+    if fenced:
+        fixes.append("stripped markdown code fence")
 
     # 1. Replace literal \n \t \r escape sequences that appear outside strings
     ctrl_cleaned = re.sub(r'\\([nrt])', lambda m: {"n": "\n", "r": "\r", "t": "\t"}[m.group(1)], text)
@@ -158,6 +176,11 @@ def repair_string(raw: str, schema: dict | None = None) -> dict:
       }
     """
     fixes: list[str] = []
+
+    # ── Step 0. Strip markdown code fences (```json ... ```) ─────────────
+    raw, fenced = clean_llm_markdown(raw)
+    if fenced:
+        fixes.append("stripped markdown code fence")
 
     # ── Step 1. Strip prose preambles/suffixes via regex ─────────────────
     first = re.search(r'[{\[]', raw)

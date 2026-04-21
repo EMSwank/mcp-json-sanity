@@ -14,11 +14,13 @@ from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent, Tool
 from starlette.applications import Starlette
 from starlette.requests import Request
+from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
 from billing import billing_service
 from db import log_sanitize_call
 from repair_logic import (
+    clean_llm_markdown,
     repair_json,
     repair_string,
     sanitize_json_output,
@@ -190,6 +192,10 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
 sse_transport = SseServerTransport("/messages/")
 
 
+async def handle_health(request: Request) -> JSONResponse:
+    return JSONResponse({"status": "ok", "service": "json-sanity"})
+
+
 async def handle_sse(request: Request):
     async with sse_transport.connect_sse(
         request.scope, request.receive, request._send
@@ -203,6 +209,7 @@ async def handle_sse(request: Request):
 
 app = Starlette(
     routes=[
+        Route("/", endpoint=handle_health),
         Route("/sse", endpoint=handle_sse),
         Mount("/messages/", app=sse_transport.handle_post_message),
     ]
