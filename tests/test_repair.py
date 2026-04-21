@@ -92,3 +92,18 @@ def test_sanitize_valid_passthrough():
     sanitized, fixes = sanitize_json_output(raw)
     assert json.loads(sanitized) == {"clean": True}
     assert fixes == []
+
+
+def test_sanitize_escapes_embedded_newline_in_string():
+    raw = '{"msg": "line one\nline two"}'
+    sanitized, fixes = sanitize_json_output(raw)
+    parsed = json.loads(sanitized)
+    assert "line one" in parsed["msg"] and "line two" in parsed["msg"]
+    assert any("control character" in f for f in fixes)
+
+
+def test_sanitize_markdown_fence_stripped():
+    raw = "```json\n{\"key\": \"value\"}\n```"
+    sanitized, fixes = sanitize_json_output(raw)
+    assert json.loads(sanitized) == {"key": "value"}
+    assert any("preamble" in f for f in fixes)

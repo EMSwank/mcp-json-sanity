@@ -1,0 +1,8 @@
+mcp
+starlette
+uvicorn
+sse-starlette
+stripe
+supabase
+python-dotenv
+gunicorn

@@ -109,7 +109,15 @@ def sanitize_json_output(raw_string: str) -> tuple[str, list[str]]:
         fixes.append(f"stripped {len(text) - last - 1}-char prose suffix")
         text = text[: last + 1]
 
-    # 5. Delegate remaining structural issues to repair_json
+    # 5. Escape raw control characters inside string values (mirrors repair_string step 2)
+    escaped, escape_count = _escape_control_chars_in_strings(text)
+    if escape_count:
+        fixes.append(
+            f"escaped {escape_count} unescaped control character(s) inside string values"
+        )
+        text = escaped
+
+    # 6. Delegate remaining structural issues to repair_json
     if _try_parse(text) is None:
         text, repair_fixes = repair_json(text)
         fixes.extend(repair_fixes)
