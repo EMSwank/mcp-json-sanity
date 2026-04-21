@@ -1,21 +1,26 @@
 """
-MCP JSON Sanity server — SSE transport (Starlette/uvicorn).
-Designed to stay lightweight for eventual Cloudflare Worker deployment.
+MCP JSON Sanity server — StreamableHTTP transport (Starlette/uvicorn).
+
+Uses stateless=True so every request is handled independently — no
+in-process session map is needed, which means the server works correctly
+behind Railway's Fastly CDN regardless of replica count.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
+from collections.abc import AsyncIterator
 
 import uvicorn
 from mcp.server import Server
-from mcp.server.sse import SseServerTransport
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.types import TextContent, Tool
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Route
 
 from billing import billing_service
 from db import log_sanitize_call
@@ -95,13 +100,11 @@ TOOLS: list[Tool] = [
         name="repair_string",
         description=(
             "Deterministic repair engine. Given a raw LLM output that should contain "
-            "JSON, this tool: (1) regex-strips prose preambles/suffixes by finding the "
-            "first `{`/`[` and last `}`/`]`, (2) escapes unescaped control characters "
-            "(newlines, tabs, carriage returns) inside string values, (3) validates "
-            "with json.loads — falling back to structural repairs and partial-recovery "
-            "bracket closing when needed, and (4) optionally validates the repaired "
-            "JSON against a JSON schema, returning concrete 'Fix Actions' the agent "
-            "must take when schema validation fails."
+            "JSON, this tool: (1) strips markdown code fences (```json), (2) regex-strips "
+            "prose preambles/suffixes, (3) escapes unescaped control characters inside "
+            "string values, (4) validates with json.loads — falling back to structural "
+            "repairs and partial-recovery bracket closing when needed, and (5) optionally "
+            "validates the repaired JSON against a JSON schema."
         ),
         inputSchema={
             "type": "object",
@@ -187,32 +190,35 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     return response
 
 
-# ── SSE transport / Starlette app ─────────────────────────────────────────────
+# ── StreamableHTTP transport / Starlette app ──────────────────────────────────
 
-sse_transport = SseServerTransport("/messages/")
+session_manager = StreamableHTTPSessionManager(
+    app=mcp,
+    stateless=True,   # no in-process session map — safe behind any load balancer
+    json_response=False,
+)
+
+
+@contextlib.asynccontextmanager
+async def lifespan(app: Starlette) -> AsyncIterator[None]:
+    async with session_manager.run():
+        yield
 
 
 async def handle_health(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok", "service": "json-sanity"})
 
 
-async def handle_sse(request: Request):
-    async with sse_transport.connect_sse(
-        request.scope, request.receive, request._send
-    ) as streams:
-        await mcp.run(
-            streams[0],
-            streams[1],
-            mcp.create_initialization_options(),
-        )
+async def handle_mcp(request: Request) -> None:
+    await session_manager.handle_request(request.scope, request.receive, request._send)
 
 
 app = Starlette(
+    lifespan=lifespan,
     routes=[
         Route("/", endpoint=handle_health),
-        Route("/sse", endpoint=handle_sse),
-        Mount("/messages/", app=sse_transport.handle_post_message),
-    ]
+        Route("/mcp", endpoint=handle_mcp, methods=["GET", "POST", "DELETE"]),
+    ],
 )
 
 # ── entrypoint ────────────────────────────────────────────────────────────────

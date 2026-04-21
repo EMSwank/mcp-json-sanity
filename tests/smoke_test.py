@@ -6,7 +6,7 @@ Override:       SMOKE_TEST_URL=http://localhost:8000 python smoke_test.py
 
 WHAT IT CHECKS
   1. GET / returns {"status": "ok"} (health check).
-  2. An MCP SSE round-trip calls `sanitize_json_output` with a
+  2. An MCP StreamableHTTP round-trip calls `sanitize_json_output` with a
      deliberately malformed JSON payload (prose preamble, unquoted keys,
      trailing comma, truncated).
   3. The response contains valid, sanitized JSON and a non-empty
@@ -36,7 +36,7 @@ def main() -> None:
     import httpx
 
     base_url = os.environ.get("SMOKE_TEST_URL", "https://json-sanity.up.railway.app").rstrip("/")
-    sse_url = f"{base_url}/sse"
+    mcp_url = f"{base_url}/mcp"
     health_url = f"{base_url}/"
 
     failures: list[str] = []
@@ -62,14 +62,14 @@ def main() -> None:
         failures.append(f"Health check request failed: {exc!r}")
         print(f"  FAIL — {exc!r}")
 
-    # ── 2. MCP SSE round-trip ────────────────────────────────────────────────
-    print("── Check 2: MCP SSE round-trip (sanitize_json_output) ───────────")
+    # ── 2. MCP StreamableHTTP round-trip ─────────────────────────────────────
+    print("── Check 2: MCP StreamableHTTP round-trip (sanitize_json_output) ─")
 
     async def _call_server() -> Any:
         from mcp import ClientSession
-        from mcp.client.sse import sse_client
+        from mcp.client.streamable_http import streamable_http_client
 
-        async with sse_client(sse_url) as (read, write):
+        async with streamable_http_client(mcp_url) as (read, write, _):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 return await session.call_tool(
@@ -81,7 +81,7 @@ def main() -> None:
     try:
         result = asyncio.run(asyncio.wait_for(_call_server(), timeout=30.0))
     except Exception as exc:
-        failures.append(f"SSE round-trip failed: {exc!r}")
+        failures.append(f"MCP round-trip failed: {exc!r}")
         print(f"  FAIL — {exc!r}")
 
     if result is not None:
