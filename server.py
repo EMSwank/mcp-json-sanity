@@ -137,6 +137,20 @@ async def list_tools() -> list[Tool]:
 @mcp.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     api_key_id: str | None = arguments.get("api_key_id")
+
+    # Auth gate — every call must carry a valid Stripe Customer ID.
+    if not api_key_id or not api_key_id.startswith("cus_"):
+        return [TextContent(
+            type="text",
+            text=json.dumps({
+                "error": "Unauthorized",
+                "message": (
+                    "api_key_id is required and must be a valid Stripe Customer ID "
+                    "(must start with 'cus_')"
+                ),
+            }),
+        )]
+
     response: list[TextContent]
     success = True
 
