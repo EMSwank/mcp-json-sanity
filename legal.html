@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON-Sanity — Terms &amp; Privacy</title>
+<style>
+  :root {
+    --ink:#0e1116; --ink-soft:#2b313a; --muted:#5b6573;
+    --bg:#fbfaf6; --card:#ffffff; --line:#e6e2d6; --accent:#b9412b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink); background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+  header { border-bottom: 1px solid var(--line); padding: 18px 0; }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-weight: 700; letter-spacing: -0.01em; color: var(--ink); font-size: 18px; }
+  .logo-dot { color: var(--accent); }
+  nav a { color: var(--ink-soft); margin-left: 22px; font-size: 14px; }
+  nav a:hover { color: var(--accent); }
+  main { padding: 56px 0 80px; }
+  h1 { font-size: 36px; line-height: 1.15; letter-spacing: -0.02em; margin: 0 0 28px; }
+  h2 { font-size: 22px; line-height: 1.25; letter-spacing: -0.015em; margin: 40px 0 14px; }
+  h3 { font-size: 17px; margin: 28px 0 10px; }
+  p, li { color: var(--ink-soft); }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 48px 0; }
+  ul { padding-left: 22px; }
+  li { margin-bottom: 6px; }
+  strong { color: var(--ink); }
+  code {
+    font: 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: #f3e3dd; color: var(--accent);
+    padding: 1px 5px; border-radius: 3px;
+  }
+  footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--ink); text-decoration: none; }
+  @media (max-width: 640px) {
+    h1 { font-size: 28px; }
+    main { padding: 36px 0 56px; }
+    nav a { margin-left: 14px; font-size: 13px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="logo" href="index.html">json<span class="logo-dot">·</span>sanity</a>
+    <nav>
+      <a href="index.html#how">How it works</a>
+      <a href="index.html#pricing">Pricing</a>
+      <a href="index.html">Home</a>
+    </nav>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <h1>JSON Sanity — Legal</h1>
+<p><strong>Last Updated:</strong> April 24, 2026</p>
+<p>This document contains the Terms of Service and Privacy Policy for JSON Sanity ("the Service"), an MCP (Model Context Protocol) server operated as a sole proprietorship ("we," "us," or "our"). By creating an account or invoking any tool provided by the Service, you ("you" or "Customer") agree to both documents below.</p>
+<hr />
+<h2>Part 1 — Terms of Service</h2>
+<h3>1. The Service</h3>
+<p>JSON Sanity is a cloud-based MCP server that provides JSON validation, repair, and sanitation tools intended for use by developers building with large language models (LLMs). The Service is accessed programmatically via the MCP protocol and is designed to be invoked by LLM agents and developer tooling.</p>
+<h3>2. Accounts and API Keys</h3>
+<p>To use the Service, you must register for an account. Upon registration, you will be issued one or more API keys. Each API key is identified internally by an <code>api_key_id</code>, which is linked to your Stripe Customer ID for billing purposes.</p>
+<p><strong>Your API key is your responsibility.</strong> Specifically:</p>
+<ul>
+<li>You are responsible for keeping your API key confidential. Do not commit it to public repositories, share it in client-side code, or otherwise expose it.</li>
+<li>All tool invocations made with your <code>api_key_id</code> are attributed to you, regardless of who actually initiated the call. You are liable for charges incurred under your key, including charges resulting from compromised or leaked credentials.</li>
+<li>If you believe your key has been compromised, you must rotate it immediately through your account dashboard. We are not responsible for usage charges incurred before you rotate a compromised key.</li>
+<li>Your <code>api_key_id</code> is bound to the Stripe Customer ID associated with your account. You may not transfer an API key to another party or another Stripe account without first rotating the key and updating billing information.</li>
+</ul>
+<p>You must be at least 18 years old and legally capable of entering into a binding contract to use the Service.</p>
+<h3>3. Billing and Payment</h3>
+<p>The Service uses a <strong>metered billing model</strong>. You are charged based on the number of tool invocations made under your <code>api_key_id</code> during each billing period.</p>
+<ul>
+<li><strong>Payment processor.</strong> All payments are handled exclusively through Stripe. We do not store or process your payment card information directly. Your use of Stripe is governed by Stripe's own terms, available at stripe.com.</li>
+<li><strong>Metering.</strong> Tool invocations are counted on our servers at the time of request. A request counts toward your usage whether or not it returns a successful result, provided the request was authenticated and reached our metering layer. Invalid or unauthenticated requests are not metered.</li>
+<li><strong>Invoicing.</strong> Charges accrue during each billing cycle and are charged to your payment method on file at the end of the cycle, or when usage thresholds are met, as configured on your plan.</li>
+<li><strong>Failed payments.</strong> If a payment fails, we will attempt to retry the charge in accordance with Stripe's standard retry schedule. Continued non-payment may result in suspension or termination under Section 6.</li>
+<li><strong>Price changes.</strong> We may adjust pricing with at least 30 days' notice. Continued use of the Service after a price change takes effect constitutes acceptance of the new pricing.</li>
+</ul>
+<h3>4. Acceptable Use</h3>
+<p>You agree not to:</p>
+<ul>
+<li>Use the Service to process content that is unlawful, infringing, or that you do not have the right to submit.</li>
+<li>Attempt to disrupt, degrade, or overwhelm the Service, including through intentional denial-of-service attacks, excessive concurrent requests designed to exhaust capacity, or automated probing for vulnerabilities.</li>
+<li>Reverse engineer, decompile, or attempt to extract the source code or internal logic of the Service.</li>
+<li>Resell the Service or wrap it as a competing product without a separate written agreement.</li>
+<li>Use the Service to process data you are not legally permitted to process, including certain categories of regulated data (e.g., PHI under HIPAA, cardholder data under PCI-DSS) unless you have confirmed in writing that the Service is appropriate for that use case.</li>
+</ul>
+<h3>5. Service Availability and Disclaimers</h3>
+<p><strong>The Service is provided "AS IS" and "AS AVAILABLE."</strong> We make no warranties, express or implied, regarding the Service, including but not limited to:</p>
+<ul>
+<li><strong>Repair accuracy.</strong> JSON Sanity operates on data that is often produced by LLMs, which are probabilistic systems. We do not guarantee that any repair, validation, or sanitation operation will produce a correct, complete, or semantically accurate result. You are responsible for validating the output of the Service before relying on it in production systems.</li>
+<li><strong>Uptime.</strong> We do not guarantee any specific uptime or availability target unless explicitly stated in a separate written service level agreement. The Service may experience downtime for maintenance, upgrades, or reasons beyond our control.</li>
+<li><strong>Fitness for purpose.</strong> We disclaim all implied warranties of merchantability, fitness for a particular purpose, and non-infringement to the fullest extent permitted by law.</li>
+</ul>
+<h3>6. Suspension and Termination</h3>
+<p>We reserve the right to suspend or terminate your access to the Service, in whole or in part, at our discretion, including in the following situations:</p>
+<ul>
+<li><strong>Non-payment.</strong> If your payment method fails and the balance remains unpaid after reasonable retry attempts, we may suspend your <code>api_key_id</code> until payment is resolved.</li>
+<li><strong>Abuse.</strong> If we detect behavior that constitutes abuse — including but not limited to intentional denial-of-service activity, attempts to bypass rate limits or billing, or violations of the Acceptable Use section — we may suspend or terminate your account immediately and without prior notice.</li>
+<li><strong>Legal requirement.</strong> If we are required to do so by law or by a valid legal order.</li>
+</ul>
+<p>You may terminate your account at any time by canceling through your account dashboard. Termination does not waive any outstanding balance owed for usage prior to termination.</p>
+<h3>7. Limitation of Liability</h3>
+<p>To the maximum extent permitted by law, our total liability to you for any claim arising out of or relating to the Service is limited to the greater of (a) the amount you paid us for the Service during the three (3) months preceding the event giving rise to the claim, or (b) one hundred US dollars ($100).</p>
+<p>We are not liable for indirect, incidental, consequential, special, or punitive damages, including lost profits, lost data, or business interruption, even if we have been advised of the possibility of such damages.</p>
+<p>Some jurisdictions do not allow the exclusion or limitation of certain damages, so some of the above may not apply to you.</p>
+<h3>8. Indemnification</h3>
+<p>You agree to indemnify and hold us harmless from any claims, damages, or expenses (including reasonable attorneys' fees) arising out of your use of the Service, your violation of these Terms, or your violation of any rights of a third party.</p>
+<h3>9. Changes to These Terms</h3>
+<p>We may update these Terms from time to time. When we do, we will update the "Last Updated" date at the top of this document and, for material changes, provide notice through the Service or via email. Continued use of the Service after changes take effect constitutes acceptance of the updated Terms.</p>
+<h3>10. Governing Law</h3>
+<p>These Terms are governed by the laws of the State of Colorado, USA, without regard to its conflict of laws principles. Any dispute arising under these Terms will be resolved in the state or federal courts located in Colorado.</p>
+<h3>11. Contact</h3>
+<p>Questions about these Terms can be directed to the contact address listed on our website.</p>
+<hr />
+<h2>Part 2 — Privacy Policy</h2>
+<h3>1. Scope</h3>
+<p>This Privacy Policy explains what information we collect when you use JSON Sanity, how we use it, and how long we keep it. It applies to all users of the Service.</p>
+<h3>2. What We Collect</h3>
+<p><strong>Account information.</strong> When you register, we collect the information necessary to create and bill your account: email address, account identifier, and the Stripe Customer ID associated with your <code>api_key_id</code>. We do not store your payment card details — those are held by Stripe.</p>
+<p><strong>Request metadata.</strong> For each tool invocation, we log metadata in Supabase for billing, rate limiting, and audit purposes. This metadata includes:</p>
+<ul>
+<li>The <code>api_key_id</code> associated with the request</li>
+<li>The name of the tool invoked (e.g., <code>validate</code>, <code>repair</code>, <code>sanitize</code>)</li>
+<li>The size of the input payload (byte length)</li>
+<li>Timestamp of the request</li>
+<li>Response status (success, error, or rate-limited)</li>
+</ul>
+<p><strong>What we do not log.</strong> We do <strong>not</strong> persistently store the content of the JSON payloads you send to the Service. Payload content exists only in memory during the immediate processing window and is discarded once the response is returned. We do not retain copies of your input or output JSON in logs, databases, or backups.</p>
+<h3>3. How We Use This Information</h3>
+<p>We use the information we collect to:</p>
+<ul>
+<li>Authenticate requests and enforce rate limits</li>
+<li>Calculate and invoice metered usage</li>
+<li>Investigate abuse, fraud, and security incidents</li>
+<li>Communicate with you about your account (e.g., billing issues, service changes)</li>
+</ul>
+<h3>4. Model Training</h3>
+<p><strong>We do not train AI models on your data.</strong> Payload content is processed transiently and is never used to train, fine-tune, or evaluate any machine learning model, whether ours or a third party's.</p>
+<h3>5. Sharing With Third Parties</h3>
+<p>We share information with a small number of service providers who are necessary to operate the Service:</p>
+<ul>
+<li><strong>Stripe</strong> — payment processing. Stripe receives billing information and payment details.</li>
+<li><strong>Supabase</strong> — database and logging infrastructure for request metadata and account records.</li>
+<li><strong>Cloud hosting provider</strong> — the infrastructure on which the Service runs.</li>
+</ul>
+<p>We do not sell your information to third parties and we do not share it for advertising purposes.</p>
+<p>We may also disclose information if required by law, valid legal process, or to protect the rights, safety, or property of us or our users.</p>
+<h3>6. Data Retention</h3>
+<ul>
+<li><strong>Request metadata</strong> (the fields described in Section 2) is retained for up to 24 months for billing, audit, and dispute-resolution purposes, after which it is deleted or aggregated in a non-identifiable form.</li>
+<li><strong>Account records</strong> are retained for as long as your account is active and for a reasonable period afterward to satisfy tax, accounting, and legal obligations.</li>
+<li><strong>Payload content</strong> is not retained beyond the immediate processing window, as described above.</li>
+</ul>
+<h3>7. Security</h3>
+<p>We use industry-standard security practices to protect the information we collect, including encryption in transit, access controls, and logging of administrative access. No system is perfectly secure, however, and we cannot guarantee absolute security.</p>
+<h3>8. Your Rights</h3>
+<p>Depending on where you live, you may have rights to access, correct, delete, or export the personal information we hold about you. To exercise these rights, contact us through the address on our website. We will respond within the timeframe required by applicable law.</p>
+<h3>9. International Users</h3>
+<p>The Service is operated from the United States. If you access the Service from outside the US, you understand that your information will be transferred to, stored, and processed in the US.</p>
+<h3>10. Changes to This Policy</h3>
+<p>We may update this Privacy Policy from time to time. When we do, we will update the "Last Updated" date at the top of this document. For material changes, we will provide notice through the Service or via email.</p>
+<h3>11. Contact</h3>
+<p>Privacy-related questions can be directed to the contact address on our website.</p>
+  </div>
+</main>
+<footer>
+  <div class="wrap">
+    <div>© 2026 JSON-Sanity. MIT-licensed core.</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="mailto:support@example.com">Contact</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

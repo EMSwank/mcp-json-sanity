@@ -1,0 +1,432 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JSON-Sanity — Agent Session Insurance</title>
+<meta name="description" content="A deterministic MCP server that stops your long-running agents from eating their own state. $0.01 per repaired call.">
+<meta property="og:title" content="JSON-Sanity — Agent Session Insurance">
+<meta property="og:description" content="The deterministic MCP server that stops your long-running agents from eating their own state.">
+<meta property="og:type" content="website">
+<style>
+  :root {
+    --ink: #0e1116;
+    --ink-soft: #2b313a;
+    --muted: #5b6573;
+    --bg: #fbfaf6;
+    --card: #ffffff;
+    --line: #e6e2d6;
+    --accent: #b9412b;
+    --accent-soft: #f3e3dd;
+    --code-bg: #14171c;
+    --code-ink: #e8eaed;
+    --code-comment: #8a929c;
+    --code-string: #b8d49b;
+    --code-key: #f0b97a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 24px; }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 18px 0;
+  }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .logo {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    font-size: 18px;
+  }
+  .logo-dot { color: var(--accent); }
+  nav a {
+    color: var(--ink-soft);
+    margin-left: 22px;
+    font-size: 14px;
+  }
+  nav a:hover { color: var(--accent); }
+
+  /* Hero */
+  .hero { padding: 72px 0 56px; }
+  .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 52px;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin: 0 0 20px;
+    font-weight: 700;
+  }
+  .lede {
+    font-size: 20px;
+    color: var(--ink-soft);
+    max-width: 640px;
+    margin: 0 0 32px;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .btn {
+    display: inline-block;
+    padding: 14px 22px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 0.04s ease;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { text-decoration: none; background: #9c331f; }
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  .btn-secondary:hover { text-decoration: none; border-color: var(--ink-soft); }
+  .price-pill {
+    margin-left: 4px;
+    font-size: 14px;
+    color: var(--muted);
+  }
+
+  /* Sections */
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  h2 {
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: -0.015em;
+    margin: 0 0 16px;
+    font-weight: 700;
+  }
+  h3 {
+    font-size: 17px;
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .section-lede {
+    font-size: 17px;
+    color: var(--ink-soft);
+    max-width: 640px;
+    margin: 0 0 32px;
+  }
+  p { margin: 0 0 14px; }
+
+  /* The Death Loop block */
+  .deathloop {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent);
+    padding: 28px 32px;
+    border-radius: 4px;
+    color: var(--ink-soft);
+    font-size: 16px;
+  }
+  .deathloop p:last-child { margin-bottom: 0; }
+  .deathloop em { color: var(--ink); font-style: normal; font-weight: 600; }
+
+  /* Tool grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin-top: 24px;
+  }
+  .tool {
+    background: var(--card);
+    border: 1px solid var(--line);
+    padding: 20px 22px;
+    border-radius: 6px;
+  }
+  .tool code {
+    font: 13px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 2px 7px;
+    border-radius: 3px;
+  }
+  .tool p {
+    margin: 10px 0 0;
+    color: var(--ink-soft);
+    font-size: 15px;
+  }
+
+  /* Code block */
+  pre.code {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 24px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font: 13.5px/1.65 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    margin: 24px 0 0;
+  }
+  pre.code .c { color: var(--code-comment); }
+  pre.code .s { color: var(--code-string); }
+  pre.code .k { color: var(--code-key); }
+
+  /* Pricing */
+  .price-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 32px;
+    max-width: 480px;
+  }
+  .price-amount {
+    font-size: 44px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 8px 0 4px;
+  }
+  .price-amount .unit {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .price-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 20px 0 24px;
+  }
+  .price-card li {
+    padding: 6px 0 6px 24px;
+    color: var(--ink-soft);
+    font-size: 15px;
+    position: relative;
+  }
+  .price-card li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 13px;
+    width: 14px; height: 6px;
+    border-left: 2px solid var(--accent);
+    border-bottom: 2px solid var(--accent);
+    transform: rotate(-45deg);
+  }
+  .price-card .btn-primary { width: 100%; text-align: center; }
+
+  /* FAQ */
+  .faq { display: grid; grid-template-columns: 1fr; gap: 18px; margin-top: 16px; }
+  .faq-item {
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+  }
+  .faq-item:first-child { border-top: 0; padding-top: 0; }
+  .faq-q { font-weight: 600; margin-bottom: 6px; }
+  .faq-a { color: var(--ink-soft); font-size: 15px; }
+  .faq-a code {
+    font: 13px ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--accent-soft);
+    color: var(--accent);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* Footer */
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 32px 0 48px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  footer .wrap {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  footer a { color: var(--muted); }
+  footer a:hover { color: var(--ink); text-decoration: none; }
+  footer nav a { margin-left: 0; margin-right: 18px; }
+
+  /* Mobile */
+  @media (max-width: 640px) {
+    h1 { font-size: 36px; }
+    .lede { font-size: 17px; }
+    .hero { padding: 48px 0 36px; }
+    section { padding: 40px 0; }
+    .grid { grid-template-columns: 1fr; }
+    nav a { margin-left: 14px; font-size: 13px; }
+    .price-amount { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">json<span class="logo-dot">·</span>sanity</div>
+    <nav>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<section class="hero" style="border-top: 0;">
+  <div class="wrap">
+    <div class="eyebrow">Agent Session Insurance</div>
+    <h1>Stop your agents from<br>eating their own state.</h1>
+    <p class="lede">
+      A deterministic MCP server that converts <em>"the JSON your agent just produced"</em> into <em>"JSON your agent can safely persist"</em> — no extra LLM calls, no retries, no probabilistic anything.
+    </p>
+    <div class="cta-row">
+      <!--
+        ┌──────────────────────────────────────────────────────────────────┐
+        │  REPLACE THIS HREF WITH YOUR STRIPE PAYMENT LINK BEFORE LAUNCH   │
+        │  Search the file for STRIPE_PAYMENT_LINK_HERE — it's the only   │
+        │  occurrence. The placeholder #buy currently scrolls to pricing. │
+        └──────────────────────────────────────────────────────────────────┘
+      -->
+      <a class="btn btn-primary" href="STRIPE_PAYMENT_LINK_HERE">Start using JSON-Sanity</a>
+      <a class="btn btn-secondary" href="#how">See how it works</a>
+      <span class="price-pill">$0.01 per successful repair · pay as you go</span>
+    </div>
+  </div>
+</section>
+
+<section id="problem">
+  <div class="wrap">
+    <h2>The Death Loop</h2>
+    <p class="section-lede">Every multi-step agentic workflow eventually hits the same failure mode.</p>
+    <div class="deathloop">
+      <p>An LLM produces output that is <em>almost</em> JSON. A stray "Sure, here you go:" preamble. An unescaped newline inside a string value. A trailing comma. A response truncated by the context window one token before the closing brace. Your orchestrator pipes that string into <code>json.loads</code>, gets a <code>JSONDecodeError</code>, and the session state file never gets written.</p>
+      <p>On the next tick the agent reads a stale or empty state, asks the model to redo the last step, receives a slightly-different-but-equally-broken output, and the cycle begins.</p>
+      <p>Retry-until-success and JSON mode reduce the rate of failure — they don't eliminate it. Each retry spends real tokens on work that should have been spent making progress, and a determined corruption (escaped-control-character drift, schema violations) survives the retry anyway.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2>What this server does</h2>
+    <p class="section-lede">When your agent is about to write state, it calls one of four sanity tools and gets back either guaranteed-parseable JSON or a concrete, machine-readable list of fix actions describing exactly what to change before retrying.</p>
+
+    <div class="grid">
+      <div class="tool">
+        <h3><code>sanitize_json_output</code></h3>
+        <p>Call this before any state write. Strips prose preambles and code fences, repairs malformed control characters, and delegates structural repairs. The single tool that most directly prevents session poisoning.</p>
+      </div>
+      <div class="tool">
+        <h3><code>repair_string</code></h3>
+        <p>Deterministic repair engine with optional schema validation. When the JSON violates your schema, you get a list of concrete Fix Actions like <em>"Add required field 'user_id' at $"</em> the agent can act on in one pass.</p>
+      </div>
+      <div class="tool">
+        <h3><code>repair_json</code></h3>
+        <p>Lighter pass for the common stuff: trailing commas, single quotes, unquoted keys, Python/JS literals, truncated structures. Use when you know the input is nearly-JSON.</p>
+      </div>
+      <div class="tool">
+        <h3><code>validate_json</code></h3>
+        <p>Strict validator. Returns the parsed object on success or a descriptive error pinpointing the exact line and column. Useful for probing suspect strings before deciding whether to repair.</p>
+      </div>
+    </div>
+
+    <pre class="code"><span class="c"># One call before every state write.</span>
+result = await session.call_tool(
+    <span class="s">"sanitize_json_output"</span>,
+    {
+        <span class="k">"raw_string"</span>: raw_model_output,
+        <span class="k">"api_key_id"</span>: <span class="s">"cus_1234"</span>,
+    },
+)
+
+<span class="c"># Or with schema enforcement and concrete fix actions:</span>
+result = await session.call_tool(
+    <span class="s">"repair_string"</span>,
+    {
+        <span class="k">"raw_string"</span>: raw_model_output,
+        <span class="k">"schema"</span>: {<span class="s">"type"</span>: <span class="s">"object"</span>, <span class="s">"required"</span>: [<span class="s">"user_id"</span>]},
+        <span class="k">"api_key_id"</span>: <span class="s">"cus_1234"</span>,
+    },
+)</pre>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Why it matters for long-running agents</h2>
+    <p class="section-lede">Short conversational agents can afford a failed JSON parse. The user retypes. Long-running agents can't.</p>
+    <p>When an agent is running unattended — a planner checkpointing every ten minutes, a research workflow accumulating notes over an afternoon, a memory-tiered assistant that lives across sessions, a background orchestrator handing tasks between sub-agents — every state write is load-bearing. A single corrupted checkpoint isn't a failed step; it's a silent rollback of everything that happened after the last good write.</p>
+    <p>JSON-Sanity sits between the model's output and your state store and makes that failure mode impossible. One deterministic string pass saves a stateful rollback, and the per-invocation cost is orders of magnitude below the cost of one replayed agent turn.</p>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <h2>Pricing</h2>
+    <p class="section-lede">Metered through Stripe. You pay for repairs that succeed. Failed calls and anonymous calls are not billed.</p>
+    <div class="price-card">
+      <div class="eyebrow" style="margin-bottom: 4px;">Pay as you go</div>
+      <div class="price-amount">$0.01 <span class="unit">/ successful tool invocation</span></div>
+      <ul>
+        <li>All four tools — same price</li>
+        <li>Failed calls aren't billed</li>
+        <li>No monthly minimum</li>
+        <li>Stripe-metered, attributed by Customer ID</li>
+        <li>Cancel anytime from the customer portal</li>
+      </ul>
+      <a class="btn btn-primary" href="STRIPE_PAYMENT_LINK_HERE">Get my API key</a>
+    </div>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap">
+    <h2>FAQ</h2>
+    <div class="faq">
+      <div class="faq-item">
+        <div class="faq-q">How do I install it?</div>
+        <div class="faq-a">After paying, you'll receive an email with your <code>cus_…</code> identifier and a configuration snippet for <code>claude_desktop_config.json</code> (or any MCP client). Drop it in, restart your client, and the four tools become available to your agents.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Do you store the JSON I send?</div>
+        <div class="faq-a">No. We log metadata — payload size, tool name, timestamp, your customer ID — for billing and audit. Payload content lives in memory during the request only and is discarded once the response is returned. We don't train models on your data.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">What if the repair fails?</div>
+        <div class="faq-a">You get a structured response describing what couldn't be salvaged, plus the partial repair that was possible. Failed calls aren't billed. For schema violations, you get a list of one-pass Fix Actions you can feed back to the agent.</div>
+      </div>
+      <div class="faq-item">
+        <div class="faq-q">Can I run it locally?</div>
+        <div class="faq-a">The repair logic is open source and runs anywhere Python runs. The hosted endpoint is for production use where you want shared metering, audit logs, and zero ops.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 JSON-Sanity. MIT-licensed core.</div>
+    <nav>
+      <a href="legal.html">Terms &amp; Privacy</a>
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a>
+      <a href="mailto:support@example.com">Contact</a>
+    </nav>
+  </div>
+</footer>
+
+</body>
+</html>
