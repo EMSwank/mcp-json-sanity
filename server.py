@@ -300,10 +300,24 @@ async def handle_stripe_webhook(request: Request) -> JSONResponse:
     if event["type"] == "checkout.session.completed":
         session_obj = event["data"]["object"]
         customer_id = session_obj.get("customer")
+        subscription_id = session_obj.get("subscription")
         customer_email = (
             session_obj.get("customer_details", {}).get("email")
             or session_obj.get("customer_email")
         )
+
+        # Add the graduated metered price to the subscription so overages bill.
+        metered_price_id = os.environ.get("STRIPE_METERED_PRICE_ID", "")
+        if subscription_id and metered_price_id:
+            try:
+                stripe.SubscriptionItem.create(
+                    subscription=subscription_id,
+                    price=metered_price_id,
+                )
+                logger.info("Added metered price to subscription %s", subscription_id)
+            except Exception as exc:
+                logger.warning("Failed to add metered price to subscription %s: %s", subscription_id, exc)
+
         if customer_id and customer_email:
             await _send_onboarding_email(customer_id, customer_email)
         else:
