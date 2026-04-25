@@ -5,7 +5,7 @@ Default target: https://json-sanity.up.railway.app
 Override:       SMOKE_TEST_URL=http://localhost:8000 python smoke_test.py
 
 WHAT IT CHECKS
-  1. GET / returns {"status": "ok"} (health check).
+  1. GET /health returns {"status": "ok"} (health check).
   2. An MCP StreamableHTTP call WITHOUT api_key_id is rejected with an
      "Unauthorized" error (auth gate must fire before any repair logic).
   3. An MCP StreamableHTTP call WITH a valid cus_... api_key_id succeeds,
@@ -13,8 +13,8 @@ WHAT IT CHECKS
 
 RUNNING
     cd mcp-json-sanity
-    python tests/smoke_test.py                              # → hits Railway
-    SMOKE_TEST_URL=http://localhost:8000 python tests/smoke_test.py
+    SMOKE_TEST_CUSTOMER_ID=cus_... python tests/smoke_test.py
+    SMOKE_TEST_URL=http://localhost:8000 SMOKE_TEST_CUSTOMER_ID=cus_... python tests/smoke_test.py
 """
 
 from __future__ import annotations
@@ -30,7 +30,10 @@ MALFORMED = (
     '{name: "Alice", age: 30, tags: ["a", "b",],'
 )
 
-VALID_API_KEY = "cus_smoke_test"
+VALID_API_KEY = os.environ.get("SMOKE_TEST_CUSTOMER_ID", "")
+if not VALID_API_KEY:
+    print("ERROR: Set SMOKE_TEST_CUSTOMER_ID=cus_... before running", file=sys.stderr)
+    sys.exit(1)
 
 
 def main() -> None:
@@ -38,7 +41,7 @@ def main() -> None:
 
     base_url = os.environ.get("SMOKE_TEST_URL", "https://json-sanity.up.railway.app").rstrip("/")
     mcp_url = f"{base_url}/mcp"
-    health_url = f"{base_url}/"
+    health_url = f"{base_url}/health"
 
     failures: list[str] = []
     auth_payload: dict[str, Any] = {}
@@ -46,7 +49,7 @@ def main() -> None:
     print(f"Targeting: {base_url}")
 
     # ── 1. Health check ──────────────────────────────────────────────────────
-    print("── Check 1: GET / health check ──────────────────────────────────")
+    print("── Check 1: GET /health ─────────────────────────────────────────")
     try:
         resp = httpx.get(health_url, timeout=10.0)
         if resp.status_code != 200:

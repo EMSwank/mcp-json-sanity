@@ -1,5 +1,10 @@
 """
-Stripe metered billing — $0.01 per successful tool invocation.
+Stripe metered billing — reports every successful tool invocation.
+
+Billing model: $1.00/mo base fee includes first 100 invocations; overages
+billed at $0.01/invocation via Stripe tiered meter pricing. The code
+always reports 100% of usage — Stripe's billing engine applies the tier
+so users are never double-charged for the first 100.
 
 BillingService operates in two modes determined at instantiation:
   - LIVE mode  (STRIPE_SECRET_KEY is set): sends MeterEvents to Stripe
@@ -11,7 +16,7 @@ key is a zero-code change — just set the env var.
 Env vars:
   STRIPE_SECRET_KEY        – sk_live_... or sk_test_...
   STRIPE_METER_EVENT_NAME  – meter event name in Stripe dashboard
-                             (default: "json_sanity_tool_invocation")
+                             (default: "json_sanity_tool_invocations")
 """
 
 from __future__ import annotations
@@ -38,7 +43,7 @@ class BillingService:
         self,
         *,
         api_key: str | None = None,
-        meter_event_name: str = "json_sanity_tool_invocation",
+        meter_event_name: str = "json_sanity_tool_invocations",
     ) -> None:
         self.meter_event_name = meter_event_name
         self.mock_mode = not api_key
@@ -98,6 +103,6 @@ class BillingService:
 billing_service = BillingService(
     api_key=os.environ.get("STRIPE_SECRET_KEY"),
     meter_event_name=os.environ.get(
-        "STRIPE_METER_EVENT_NAME", "json_sanity_tool_invocation"
+        "STRIPE_METER_EVENT_NAME", "json_sanity_tool_invocations"
     ),
 )

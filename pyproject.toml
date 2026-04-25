@@ -1,12 +1,11 @@
 [project]
 name = "mcp-json-sanity"
 version = "0.1.0"
-description = "MCP server for JSON validation and repair, SSE transport"
+description = "MCP server for JSON validation and repair, StreamableHTTP transport"
 requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.27.0",
-    "sse-starlette>=3.3.4",
     "starlette>=1.0.0",
     "stripe>=15.0.1",
     "supabase>=2.28.3",

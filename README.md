@@ -26,7 +26,7 @@ JSON-Sanity sits between the model's output and the state store and makes that f
 
 ## Tools
 
-The server exposes four tools over the MCP SSE transport.
+The server exposes four tools over the MCP StreamableHTTP transport.
 
 **`sanitize_json_output`** — the tool to call before any state write. Strips prose preambles and suffixes, repairs malformed control characters, and delegates structural repairs. This is the tool that most directly prevents session poisoning; each call is logged so you can audit which agents are producing malformed output and how often.
 
@@ -38,10 +38,16 @@ The server exposes four tools over the MCP SSE transport.
 
 ## Installation
 
-Install via Smithery:
+Coming soon on Smithery — for now, configure manually:
 
-```
-smithery install json-sanity
+```json
+{
+  "mcpServers": {
+    "json-sanity": {
+      "url": "https://json-sanity.up.railway.app/mcp"
+    }
+  }
+}
 ```
 
 Configuration is read from environment variables at startup. The two that matter for production deployment:
@@ -88,9 +94,9 @@ Pass the customer identifier as `api_key_id` on every call to attribute repair v
 
 ```python
 from mcp import ClientSession
-from mcp.client.sse import sse_client
+from mcp.client.streamable_http import streamable_http_client
 
-async with sse_client("https://your-deployment/sse") as (r, w):
+async with streamable_http_client("https://json-sanity.up.railway.app/mcp") as (r, w, _):
     async with ClientSession(r, w) as session:
         await session.initialize()
         result = await session.call_tool(
@@ -130,7 +136,7 @@ $0.01 per successful tool invocation, billed via Stripe metered billing against 
 
 ## Operational Notes
 
-The server is designed to stay lightweight and is bundled for eventual Cloudflare Worker deployment; the SSE transport runs on Starlette/uvicorn today. Repair logic has zero heavy dependencies. Schema validation imports `jsonschema` lazily, so workflows that do not use schemas pay no import cost. Billing and persistence failures are always caught and logged — a downed Supabase or a Stripe hiccup will never take down a tool response. The tool either repairs your JSON or tells the agent exactly how to fix it, and nothing between those two states will crash a session.
+The server is structured to keep the repair core dependency-free, in case we port to a Worker later. Runs on Starlette/uvicorn. Repair logic has zero heavy dependencies. Schema validation imports `jsonschema` lazily, so workflows that do not use schemas pay no import cost. Billing and persistence failures are always caught and logged — a downed Supabase or a Stripe hiccup will never take down a tool response. The tool either repairs your JSON or tells the agent exactly how to fix it, and nothing between those two states will crash a session.
 
 ## License
 

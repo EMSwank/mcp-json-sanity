@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>JSON-Sanity — Agent Session Insurance</title>
-<meta name="description" content="A deterministic MCP server that stops your long-running agents from eating their own state. $0.01 per repaired call.">
+<meta name="description" content="A deterministic MCP server that stops your long-running agents from eating their own state. $1/mo includes first 100 requests, then $0.01 each.">
 <meta property="og:title" content="JSON-Sanity — Agent Session Insurance">
 <meta property="og:description" content="The deterministic MCP server that stops your long-running agents from eating their own state.">
 <meta property="og:type" content="website">
@@ -292,16 +292,9 @@
       A deterministic MCP server that converts <em>"the JSON your agent just produced"</em> into <em>"JSON your agent can safely persist"</em> — no extra LLM calls, no retries, no probabilistic anything.
     </p>
     <div class="cta-row">
-      <!--
-        ┌──────────────────────────────────────────────────────────────────┐
-        │  REPLACE THIS HREF WITH YOUR STRIPE PAYMENT LINK BEFORE LAUNCH   │
-        │  Search the file for STRIPE_PAYMENT_LINK_HERE — it's the only   │
-        │  occurrence. The placeholder #buy currently scrolls to pricing. │
-        └──────────────────────────────────────────────────────────────────┘
-      -->
-      <a class="btn btn-primary" href="STRIPE_PAYMENT_LINK_HERE">Start using JSON-Sanity</a>
+      <a class="btn btn-primary" href="https://buy.stripe.com/28EcN763Qe4G5b5gVbcEw00">Start using JSON-Sanity</a>
       <a class="btn btn-secondary" href="#how">See how it works</a>
-      <span class="price-pill">$0.01 per successful repair · pay as you go</span>
+      <span class="price-pill">$1/mo · first 100 requests included · $0.01 each after</span>
     </div>
   </div>
 </section>
@@ -375,18 +368,18 @@ result = await session.call_tool(
 <section id="pricing">
   <div class="wrap">
     <h2>Pricing</h2>
-    <p class="section-lede">Metered through Stripe. You pay for repairs that succeed. Failed calls and anonymous calls are not billed.</p>
+    <p class="section-lede">Metered through Stripe. Failed calls and anonymous calls are not billed.</p>
     <div class="price-card">
-      <div class="eyebrow" style="margin-bottom: 4px;">Pay as you go</div>
-      <div class="price-amount">$0.01 <span class="unit">/ successful tool invocation</span></div>
+      <div class="eyebrow" style="margin-bottom: 4px;">Starter plan</div>
+      <div class="price-amount">$1 <span class="unit">/ month</span></div>
+      <div style="color:var(--muted);font-size:14px;margin:-8px 0 16px;">First 100 requests included · $0.01 each after</div>
       <ul>
         <li>All four tools — same price</li>
         <li>Failed calls aren't billed</li>
-        <li>No monthly minimum</li>
         <li>Stripe-metered, attributed by Customer ID</li>
         <li>Cancel anytime from the customer portal</li>
       </ul>
-      <a class="btn btn-primary" href="STRIPE_PAYMENT_LINK_HERE">Get my API key</a>
+      <a class="btn btn-primary" href="https://buy.stripe.com/28EcN763Qe4G5b5gVbcEw00">Get my API key</a>
     </div>
   </div>
 </section>
