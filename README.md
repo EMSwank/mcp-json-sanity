@@ -1,3 +1,4 @@
+[![smithery badge](https://smithery.ai/badge/eliotswank/json-sanity)](https://smithery.ai/servers/eliotswank/json-sanity)
 # JSON-Sanity: Agent Session Insurance
 
 The deterministic MCP server that stops your long-running agents from eating their own state.
