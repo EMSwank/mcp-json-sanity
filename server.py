@@ -194,7 +194,7 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
                 "error": "Unauthorized",
                 "message": (
                     "No active subscription found for this Customer ID. "
-                    "Visit https://json-sanity.up.railway.app to subscribe."
+                    "Visit https://json-sanity.netlify.app to subscribe."
                 ),
             }),
         )]
@@ -363,7 +363,7 @@ Then pass your key on each call:
 
   api_key_id: "{customer_id}"
 
-Full docs and examples: https://json-sanity.up.railway.app
+Full docs and examples: https://json-sanity.netlify.app
 
 Questions? Reply to this email or reach us at peakcalc@gmail.com
 """
