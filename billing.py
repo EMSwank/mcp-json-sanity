@@ -17,6 +17,8 @@ Env vars:
   STRIPE_SECRET_KEY        – sk_live_... or sk_test_...
   STRIPE_METER_EVENT_NAME  – meter event name in Stripe dashboard
                              (default: "json_sanity_tool_invocations")
+                             Must match the meter name configured in your
+                             Stripe dashboard exactly.
 """
 
 from __future__ import annotations

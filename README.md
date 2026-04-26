@@ -39,7 +39,13 @@ The server exposes four tools over the MCP StreamableHTTP transport.
 
 ## Installation
 
-Coming soon on Smithery — for now, configure manually:
+### Smithery (recommended)
+
+Search for `json-sanity` in [Smithery](https://smithery.ai/servers/eliotswank/json-sanity) and follow the one-click install.
+
+### Manual (Claude Desktop)
+
+Add to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -51,47 +57,13 @@ Coming soon on Smithery — for now, configure manually:
 }
 ```
 
-Configuration is read from environment variables at startup. The two that matter for production deployment:
-
-```
-SUPABASE_URL                  # where sanitize_logs rows are written
-SUPABASE_SERVICE_ROLE_KEY     # service-role credentials for that project
-STRIPE_SECRET_KEY             # optional; enables metered billing
-STRIPE_METER_EVENT_NAME       # optional; defaults to "json_sanity_tool_invocation"
-```
-
-If `STRIPE_SECRET_KEY` is unset, billing runs in mock mode — each would-be meter event is printed to stdout so you can see exactly what would have been sent to Stripe without actually sending it. This makes local development and CI deterministic and free.
-
-## Configuration
-
-Add the following to your `claude_desktop_config.json` (or equivalent MCP client config) to connect Claude Desktop to a local instance:
-
-```json
-{
-  "mcpServers": {
-    "json-sanity": {
-      "command": "uv",
-      "args": ["--directory", "/path/to/mcp-json-sanity", "run", "python", "server.py"],
-      "env": {
-        "SUPABASE_URL": "https://your-project-ref.supabase.co",
-        "SUPABASE_SERVICE_ROLE_KEY": "your-service-role-key",
-        "STRIPE_SECRET_KEY": "sk_test_...",
-        "STRIPE_METER_EVENT_NAME": "json_sanity_tool_invocation"
-      }
-    }
-  }
-}
-```
-
-`STRIPE_SECRET_KEY` is optional — omit it and billing runs in mock mode (events are printed to stdout). `STRIPE_METER_EVENT_NAME` is optional and defaults to `json_sanity_tool_invocation`.
-
 The config file lives at:
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
 
-## Usage
+Pass your Stripe Customer ID as `api_key_id` on every tool call (see [Pricing](#pricing)).
 
-Pass the customer identifier as `api_key_id` on every call to attribute repair volume and (if billing is enabled) charge the right account.
+## Usage
 
 ```python
 from mcp import ClientSession
@@ -133,12 +105,51 @@ When the response includes a non-empty `fix_actions` list, feed those strings ba
 
 ## Pricing
 
-$0.01 per successful tool invocation, billed via Stripe metered billing against the Customer ID you pass as `api_key_id`. Failed calls are not billed. Anonymous calls (no `api_key_id`) are not billed.
+**$1.00/month** base fee includes the first 100 tool invocations. Additional invocations are billed at **$0.01 each** via Stripe metered billing. Failed calls are never billed. Subscribe and retrieve your Customer ID at [json-sanity.netlify.app](https://json-sanity.netlify.app).
+
+## Self-Hosting
+
+Clone the repo and set the following environment variables (see `.env.example`):
+
+```
+SUPABASE_URL                 # Supabase project URL
+SUPABASE_SERVICE_ROLE_KEY    # Service-role key for the sanitize_logs table
+
+STRIPE_SECRET_KEY            # sk_live_... or sk_test_...
+STRIPE_METER_EVENT_NAME      # Meter name in Stripe dashboard (default: json_sanity_tool_invocations)
+STRIPE_WEBHOOK_SECRET        # whsec_... from the Stripe webhook endpoint
+STRIPE_METERED_PRICE_ID      # price_... for the graduated overage tier
+
+RESEND_API_KEY               # For onboarding emails after checkout
+FROM_EMAIL                   # Sender address (e.g. onboarding@yourdomain.com)
+```
+
+If `STRIPE_SECRET_KEY` is unset, billing runs in **mock mode** — each would-be meter event is printed to stdout so you can verify the payload without hitting Stripe. This makes local development and CI deterministic and free.
+
+Run locally:
+
+```bash
+uv run python server.py
+```
+
+Or with gunicorn (matches the production Procfile):
+
+```bash
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker server:app --bind 0.0.0.0:8000
+```
+
+Run tests:
+
+```bash
+uv run pytest
+```
 
 ## Operational Notes
 
-The server is structured to keep the repair core dependency-free, in case we port to a Worker later. Runs on Starlette/uvicorn. Repair logic has zero heavy dependencies. Schema validation imports `jsonschema` lazily, so workflows that do not use schemas pay no import cost. Billing and persistence failures are always caught and logged — a downed Supabase or a Stripe hiccup will never take down a tool response. The tool either repairs your JSON or tells the agent exactly how to fix it, and nothing between those two states will crash a session.
+Runs on Starlette/uvicorn behind gunicorn. Uses `StreamableHTTPSessionManager(stateless=True)` so any replica count works correctly behind Railway's Fastly CDN. Repair logic has zero heavy dependencies — `jsonschema` is imported lazily so workflows that skip schema validation pay no import cost. Billing and persistence failures are always caught and logged; a downed Supabase or a Stripe hiccup will never take down a tool response.
+
+`index.html` and `legal.*` in this repo are the marketing site deployed to Netlify — they live here for convenience and are not part of the server.
 
 ## License
 
-MIT.
+MIT — see [LICENSE](LICENSE).
