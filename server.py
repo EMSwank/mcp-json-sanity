@@ -21,7 +21,7 @@ import stripe
 import uvicorn
 from mcp.server import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
-from mcp.types import TextContent, Tool
+from mcp.types import TextContent, Tool, ToolAnnotations
 from starlette.applications import Starlette
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
@@ -96,6 +96,12 @@ TOOLS: list[Tool] = [
             },
             "required": ["json_string"],
         },
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            idempotentHint=True,
+            destructiveHint=False,
+            openWorldHint=False,
+        ),
     ),
     Tool(
         name="repair_json",
@@ -111,6 +117,12 @@ TOOLS: list[Tool] = [
             },
             "required": ["json_string"],
         },
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            idempotentHint=True,
+            destructiveHint=False,
+            openWorldHint=False,
+        ),
     ),
     Tool(
         name="sanitize_json_output",
@@ -133,6 +145,12 @@ TOOLS: list[Tool] = [
             },
             "required": ["raw_string"],
         },
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            idempotentHint=True,
+            destructiveHint=False,
+            openWorldHint=False,
+        ),
     ),
     Tool(
         name="repair_string",
@@ -163,6 +181,12 @@ TOOLS: list[Tool] = [
             },
             "required": ["raw_string"],
         },
+        annotations=ToolAnnotations(
+            readOnlyHint=True,
+            idempotentHint=True,
+            destructiveHint=False,
+            openWorldHint=False,
+        ),
     ),
 ]
 
