@@ -297,8 +297,12 @@ async def handle_stripe_webhook(request: Request) -> JSONResponse:
         logger.warning("Stripe webhook parse error: %s", exc)
         return JSONResponse({"error": "bad payload"}, status_code=400)
 
+    # Parse payload as plain dict — Stripe SDK v15 returns typed objects
+    # that don't support .get(), so we use the raw JSON for data access.
+    event_dict = json.loads(payload)
+
     if event["type"] == "checkout.session.completed":
-        session_obj = event["data"]["object"]
+        session_obj = event_dict["data"]["object"]
         customer_id = session_obj.get("customer")
         subscription_id = session_obj.get("subscription")
         customer_email = (
