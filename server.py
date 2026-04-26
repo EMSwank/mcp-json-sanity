@@ -14,6 +14,7 @@ import logging
 import os
 import time
 from collections.abc import AsyncIterator
+from contextvars import ContextVar
 
 import httpx
 import stripe
@@ -38,6 +39,8 @@ from repair_logic import (
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+_request_api_key: ContextVar[str | None] = ContextVar("request_api_key", default=None)
 
 # ── Subscription auth cache ───────────────────────────────────────────────────
 
@@ -171,7 +174,7 @@ async def list_tools() -> list[Tool]:
 
 @mcp.call_tool()
 async def call_tool(name: str, arguments: dict) -> list[TextContent]:
-    api_key_id: str | None = arguments.get("api_key_id")
+    api_key_id: str | None = arguments.get("api_key_id") or _request_api_key.get()
 
     # Auth gate — step 1: must look like a Stripe customer ID.
     if not api_key_id or not api_key_id.startswith("cus_"):
@@ -276,7 +279,11 @@ async def handle_root(request: Request) -> Response:
 
 
 async def handle_mcp(request: Request) -> None:
-    await session_manager.handle_request(request.scope, request.receive, request._send)
+    token = _request_api_key.set(request.query_params.get("api_key_id"))
+    try:
+        await session_manager.handle_request(request.scope, request.receive, request._send)
+    finally:
+        _request_api_key.reset(token)
 
 
 async def handle_stripe_webhook(request: Request) -> JSONResponse:
